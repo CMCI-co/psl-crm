@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phi Sigma Lambda CRM — Supabase Setup Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Space+Mono&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #1a2233; --sub: #41495b; --faint: #707892;
+    --line: #e4e7ec; --panel: #f6f7f9; --panel2: #eef1f8;
+    --accent: #22386b; --accent-soft: #eef1f8; --gold: #a9852f;
+    --good: #1f6b46; --good-bg: #e3f3ea; --warn: #8a5a16; --warn-bg: #fbefdd;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--ink); font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 15px; line-height: 1.62; }
+  .doc { box-sizing: border-box; max-width: 8.5in; margin: 0 auto; background: inherit; padding: 56px clamp(24px, 5vw, 0.85in) 96px; }
+  .doc-frame { width: 100%; border-collapse: collapse; }
+  .doc-frame td { padding: 0; }
+  .hdr-space, .ftr-space { display: none; }
+
+  h1 { font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 38px; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 25px; line-height: 1.18; margin: 44px 0 4px; text-wrap: balance; }
+  h3 { font-size: 16px; font-weight: 700; margin: 26px 0 6px; color: var(--ink); }
+  p, li { text-wrap: pretty; color: var(--sub); }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent); }
+  code { font-family: 'Space Mono', monospace; font-size: 0.86em; background: var(--panel2); color: var(--accent); padding: 1.5px 5px; border-radius: 4px; }
+  pre { background: #14171f; color: #e7ebf3; border-radius: 12px; padding: 16px 18px; overflow-x: auto; font-family: 'Space Mono', monospace; font-size: 12.5px; line-height: 1.6; margin: 12px 0; }
+  pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  .tok-k { color: #8fb6ff; } .tok-c { color: #7e8aa3; font-style: italic; } .tok-s { color: #f0c987; } .tok-f { color: #9ad9b0; }
+
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); margin: 0 0 14px; }
+  .lede { font-size: 17px; line-height: 1.6; color: var(--sub); margin: 10px 0 0; }
+  .rule { height: 1px; background: var(--line); border: 0; margin: 34px 0 0; }
+
+  .step { display: flex; gap: 14px; align-items: baseline; margin: 40px 0 0; }
+  .step-n { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-family: 'Newsreader', serif; font-size: 16px; display: flex; align-items: center; justify-content: center; transform: translateY(4px); }
+  .step h2 { margin-top: 0; }
+
+  .callout { border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--panel); border-radius: 10px; padding: 14px 18px; margin: 18px 0; }
+  .callout.good { border-left-color: var(--good); background: var(--good-bg); }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .callout p { margin: 0; font-size: 13.5px; color: var(--ink); }
+  .callout .lbl { font-weight: 700; }
+
+  ul, ol { padding-left: 22px; }
+  li { margin: 5px 0; }
+  table.spec { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+  table.spec th { text-align: left; font-size: 10.5px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--faint); border-bottom: 1.5px solid var(--line); padding: 7px 10px 7px 0; }
+  table.spec td { border-bottom: 1px solid var(--line); padding: 9px 10px 9px 0; color: var(--sub); vertical-align: top; }
+  table.spec td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+
+  @page { size: letter; margin: 0; }
+  @media print {
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    html, body { margin: 0; padding: 0; }
+    .doc { max-width: none !important; margin: 0 !important; padding: 0 0.75in !important; }
+    .hdr-space, .ftr-space { display: table-cell; height: 0.7in; }
+    h1, h2, h3 { break-after: avoid; }
+    pre, .callout, table.spec, tr, .step { break-inside: avoid; }
+    p, li { orphans: 3; widows: 3; }
+  }
+</style>
+</head>
+<body>
+<main class="doc">
+<table class="doc-frame" role="presentation">
+<thead><tr><td class="hdr-space"></td></tr></thead>
+<tbody><tr><td>
+
+<p class="eyebrow">Phi Sigma Lambda CRM · Engineering handoff</p>
+<h1>Wiring Training Modules to Supabase</h1>
+<p class="lede">Everything you click in the prototype today runs on in-browser mock data. This guide is the checklist to make it real — a database, login, file storage, and the permission rules that keep authoring locked to <strong>Campus Directors</strong> and <strong>National Staff</strong>. No code changes are needed to read it; do the steps in order and you'll have a working backend.</p>
+
+<div class="callout">
+<p><span class="lbl">Who this is for.</span> You (or whoever sets up the account). You'll spend most of the time pasting SQL into Supabase's editor and clicking buttons — not programming. Budget about an hour for a first pass.</p>
+</div>
+
+<hr class="rule" />
+
+<div class="step"><div class="step-n">1</div><div><h2>Create the Supabase project</h2></div></div>
+<ol>
+<li>Go to <a href="https://supabase.com">supabase.com</a>, sign in, and click <strong>New project</strong>.</li>
+<li>Name it <code>psl-crm</code>, pick a region close to your members (e.g. East US), and set a strong database password — save it in your password manager.</li>
+<li>When it finishes provisioning, open <strong>Project Settings → API</strong> and copy two values: the <strong>Project URL</strong> and the <strong>anon public key</strong>. These are what the app uses to talk to Supabase. (The anon key is safe to ship in the frontend — the security comes from the rules in Step 4.)</li>
+</ol>
+
+<div class="step"><div class="step-n">2</div><div><h2>Create the database tables</h2></div></div>
+<p>Open <strong>SQL Editor → New query</strong>, paste the block below, and click <strong>Run</strong>. It creates the whole schema: people and their roles, modules, the slides inside them, the test questions, and a record of every attempt.</p>
+<pre><code><span class="tok-c">-- 1. People. Mirrors Supabase Auth, adds a role per person.</span>
+<span class="tok-k">create type</span> user_role <span class="tok-k">as enum</span> (<span class="tok-s">'national_staff'</span>, <span class="tok-s">'campus_director'</span>, <span class="tok-s">'member'</span>, <span class="tok-s">'candidate'</span>, <span class="tok-s">'applicant'</span>, <span class="tok-s">'alumni'</span>);
+
+<span class="tok-k">create table</span> profiles (
+  id          uuid <span class="tok-k">primary key references</span> auth.users(id) <span class="tok-k">on delete cascade</span>,
+  full_name   text,
+  role        user_role <span class="tok-k">not null default</span> <span class="tok-s">'member'</span>,
+  campus      text,
+  created_at  timestamptz <span class="tok-k">default</span> now()
+);
+
+<span class="tok-c">-- 2. Modules. The top-level training unit.</span>
+<span class="tok-k">create table</span> modules (
+  id           uuid <span class="tok-k">primary key default</span> gen_random_uuid(),
+  title        text <span class="tok-k">not null</span>,
+  collection   text,
+  audience     text[] <span class="tok-k">default</span> <span class="tok-s">'{}'</span>,   <span class="tok-c">-- e.g. {Candidates,Members}</span>
+  pass_score   int  <span class="tok-k">default</span> 75,
+  status       text <span class="tok-k">default</span> <span class="tok-s">'draft'</span>,   <span class="tok-c">-- draft | published</span>
+  created_by   uuid <span class="tok-k">references</span> profiles(id),
+  created_at   timestamptz <span class="tok-k">default</span> now(),
+  updated_at   timestamptz <span class="tok-k">default</span> now()
+);
+
+<span class="tok-c">-- 3. Slides. One row per slide; `content` holds the type-specific data.</span>
+<span class="tok-k">create table</span> slides (
+  id         uuid <span class="tok-k">primary key default</span> gen_random_uuid(),
+  module_id  uuid <span class="tok-k">references</span> modules(id) <span class="tok-k">on delete cascade</span>,
+  position   int  <span class="tok-k">not null</span>,
+  type       text <span class="tok-k">not null</span>,        <span class="tok-c">-- text | image | video | game</span>
+  content    jsonb <span class="tok-k">not null default</span> <span class="tok-s">'{}'</span>  <span class="tok-c">-- title, body, pairs, cards, etc.</span>
+);
+
+<span class="tok-c">-- 4. Test questions for a module's final test.</span>
+<span class="tok-k">create table</span> questions (
+  id         uuid <span class="tok-k">primary key default</span> gen_random_uuid(),
+  module_id  uuid <span class="tok-k">references</span> modules(id) <span class="tok-k">on delete cascade</span>,
+  position   int,
+  prompt     text <span class="tok-k">not null</span>,
+  options    text[] <span class="tok-k">not null</span>,
+  correct    int <span class="tok-k">not null</span>     <span class="tok-c">-- index of the right option</span>
+);
+
+<span class="tok-c">-- 5. Attempts. Every time a learner takes the test.</span>
+<span class="tok-k">create table</span> attempts (
+  id          uuid <span class="tok-k">primary key default</span> gen_random_uuid(),
+  module_id   uuid <span class="tok-k">references</span> modules(id) <span class="tok-k">on delete cascade</span>,
+  user_id     uuid <span class="tok-k">references</span> profiles(id) <span class="tok-k">on delete cascade</span>,
+  score       int  <span class="tok-k">not null</span>,
+  passed      boolean <span class="tok-k">not null</span>,
+  taken_at    timestamptz <span class="tok-k">default</span> now()
+);</code></pre>
+
+<div class="callout">
+<p><span class="lbl">Why <code>content jsonb</code>?</span> Each game type stores different fields — a match game has <code>pairs</code>, flashcards have <code>cards</code>, the sorting game has <code>buckets</code> and <code>items</code>. One flexible <code>content</code> column holds all of them, which matches exactly how the builder already shapes each slide. No schema change when you add a new game type later.</p>
+</div>
+
+<div class="step"><div class="step-n">3</div><div><h2>Turn on login &amp; assign roles</h2></div></div>
+<p>Open <strong>Authentication → Providers</strong>. Enable <strong>Email</strong> (magic-link is the simplest — members get a sign-in link, no passwords). If your chapters use Google Workspace, enable <strong>Google</strong> too.</p>
+<p>A person's <strong>role</strong> is what unlocks editing. When someone signs up, create their profile row and set the role. Paste this once so new sign-ups automatically get a profile:</p>
+<pre><code><span class="tok-c">-- Auto-create a profile row whenever someone signs up.</span>
+<span class="tok-k">create function</span> handle_new_user() <span class="tok-k">returns trigger as</span> $$
+<span class="tok-k">begin</span>
+  <span class="tok-k">insert into</span> profiles (id, full_name)
+  <span class="tok-k">values</span> (new.id, new.raw_user_meta_data->>'full_name');
+  <span class="tok-k">return</span> new;
+<span class="tok-k">end;</span> $$ <span class="tok-k">language</span> plpgsql <span class="tok-k">security definer</span>;
+
+<span class="tok-k">create trigger</span> on_auth_user_created
+  <span class="tok-k">after insert on</span> auth.users
+  <span class="tok-k">for each row execute function</span> handle_new_user();</code></pre>
+<p>To make someone a leader, run one line (or build a tiny admin screen later):</p>
+<pre><code><span class="tok-k">update</span> profiles <span class="tok-k">set</span> role = <span class="tok-s">'campus_director'</span>
+<span class="tok-k">where</span> id = <span class="tok-s">'&lt;their-user-id&gt;'</span>;</code></pre>
+
+<div class="step"><div class="step-n">4</div><div><h2>Lock down who can edit (Row Level Security)</h2></div></div>
+<p>This is the most important step — it's what enforces the exact rule from the prototype: <strong>anyone can read published modules, but only Campus Directors and National Staff can create or change them.</strong> These rules run on Supabase's servers, so they can't be bypassed from the browser.</p>
+<pre><code><span class="tok-c">-- Helper: is the current user a module editor?</span>
+<span class="tok-k">create function</span> is_editor() <span class="tok-k">returns</span> boolean <span class="tok-k">as</span> $$
+  <span class="tok-k">select exists</span> (
+    <span class="tok-k">select</span> 1 <span class="tok-k">from</span> profiles
+    <span class="tok-k">where</span> id = auth.uid()
+      <span class="tok-k">and</span> role <span class="tok-k">in</span> (<span class="tok-s">'campus_director'</span>, <span class="tok-s">'national_staff'</span>)
+  );
+$$ <span class="tok-k">language</span> sql <span class="tok-k">security definer</span>;
+
+<span class="tok-k">alter table</span> modules   <span class="tok-k">enable row level security</span>;
+<span class="tok-k">alter table</span> slides    <span class="tok-k">enable row level security</span>;
+<span class="tok-k">alter table</span> questions <span class="tok-k">enable row level security</span>;
+<span class="tok-k">alter table</span> attempts  <span class="tok-k">enable row level security</span>;
+
+<span class="tok-c">-- Everyone signed in can read published modules…</span>
+<span class="tok-k">create policy</span> <span class="tok-s">"read published"</span> <span class="tok-k">on</span> modules <span class="tok-k">for select</span>
+  <span class="tok-k">using</span> (status = <span class="tok-s">'published'</span> <span class="tok-k">or</span> is_editor());
+
+<span class="tok-c">-- …but only editors can write.</span>
+<span class="tok-k">create policy</span> <span class="tok-s">"editors write"</span> <span class="tok-k">on</span> modules <span class="tok-k">for all</span>
+  <span class="tok-k">using</span> (is_editor()) <span class="tok-k">with check</span> (is_editor());
+
+<span class="tok-c">-- Slides &amp; questions follow the same editor rule.</span>
+<span class="tok-k">create policy</span> <span class="tok-s">"slides editors"</span> <span class="tok-k">on</span> slides <span class="tok-k">for all</span>
+  <span class="tok-k">using</span> (is_editor()) <span class="tok-k">with check</span> (is_editor());
+<span class="tok-k">create policy</span> <span class="tok-s">"slides read"</span> <span class="tok-k">on</span> slides <span class="tok-k">for select using</span> (<span class="tok-k">true</span>);
+<span class="tok-k">create policy</span> <span class="tok-s">"q editors"</span> <span class="tok-k">on</span> questions <span class="tok-k">for all</span>
+  <span class="tok-k">using</span> (is_editor()) <span class="tok-k">with check</span> (is_editor());
+<span class="tok-k">create policy</span> <span class="tok-s">"q read"</span> <span class="tok-k">on</span> questions <span class="tok-k">for select using</span> (<span class="tok-k">true</span>);
+
+<span class="tok-c">-- A learner can record &amp; read their own attempts; editors see all.</span>
+<span class="tok-k">create policy</span> <span class="tok-s">"own attempts"</span> <span class="tok-k">on</span> attempts <span class="tok-k">for all</span>
+  <span class="tok-k">using</span> (user_id = auth.uid() <span class="tok-k">or</span> is_editor())
+  <span class="tok-k">with check</span> (user_id = auth.uid());</code></pre>
+<div class="callout warn">
+<p><span class="lbl">Don't skip RLS.</span> Until you run these, every table is either fully locked or fully open. With them in place, the <span class="pill">Editing as Campus Director</span> badge and the locked "authoring restricted" state in the prototype become real, server-enforced behavior.</p>
+</div>
+
+<div class="step"><div class="step-n">5</div><div><h2>Set up file storage for video &amp; images</h2></div></div>
+<p>The image and video slides need somewhere to keep the actual files. Open <strong>Storage → New bucket</strong> and create:</p>
+<table class="spec">
+<thead><tr><th>Bucket</th><th>Public?</th><th>Holds</th></tr></thead>
+<tbody>
+<tr><td>module-media</td><td>Public read</td><td>Slide images &amp; lesson videos</td></tr>
+<tr><td>covers</td><td>Public read</td><td>Module cover images</td></tr>
+</tbody>
+</table>
+<p>Mark them <strong>public</strong> for reading (so learners can watch without a signed URL each time), then add an upload rule so only editors can put files in:</p>
+<pre><code><span class="tok-k">create policy</span> <span class="tok-s">"editors upload media"</span> <span class="tok-k">on</span> storage.objects
+  <span class="tok-k">for insert with check</span> (bucket_id = <span class="tok-s">'module-media'</span> <span class="tok-k">and</span> is_editor());</code></pre>
+<div class="callout"><p><span class="lbl">Large videos.</span> Supabase storage handles files up to 5 GB on paid plans. For long lessons, many chapters host the video on YouTube/Vimeo (unlisted) and store just the link in the slide's <code>content</code> — cheaper and faster. Either works with the current video slide.</p></div>
+
+<div class="step"><div class="step-n">6</div><div><h2>Connect the prototype to Supabase</h2></div></div>
+<p>This is the one part that touches the app code. Add the Supabase client library and point it at your project:</p>
+<pre><code><span class="tok-c">// add to the page &lt;head&gt;</span>
+&lt;script src=<span class="tok-s">"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"</span>&gt;&lt;/script&gt;
+
+<span class="tok-c">// initialize once</span>
+<span class="tok-k">const</span> db = supabase.<span class="tok-f">createClient</span>(
+  <span class="tok-s">'https://YOUR-PROJECT.supabase.co'</span>,
+  <span class="tok-s">'YOUR-ANON-KEY'</span>
+);</code></pre>
+<p>Then swap the four mock-data touchpoints for live calls. The shapes already line up with the builder &amp; player, so this is mostly find-and-replace:</p>
+<table class="spec">
+<thead><tr><th>In the prototype</th><th>Replace with</th></tr></thead>
+<tbody>
+<tr><td>Library list (<code>MODULES</code>)</td><td><code>db.from('modules').select()</code></td></tr>
+<tr><td>Builder autosave</td><td><code>db.from('modules' / 'slides').upsert(...)</code></td></tr>
+<tr><td>Role gate (Tweaks dropdown)</td><td>the signed-in user's <code>profiles.role</code></td></tr>
+<tr><td>Test submit / pass</td><td><code>db.from('attempts').insert(...)</code></td></tr>
+</tbody>
+</table>
+<div class="callout good"><p><span class="lbl">The role gate is already built right.</span> Today the prototype reads a role from the Tweaks panel; in production you read it once from <code>profiles.role</code> after login and pass it into <code>&lt;TrainingBuilder role={…}&gt;</code> and <code>&lt;TrainingLibrary role={…}&gt;</code> exactly as they're wired now. The confetti, the pass/fail test, the slide types — none of that changes.</p></div>
+
+<div class="step"><div class="step-n">7</div><div><h2>Go-live checklist</h2></div></div>
+<ul>
+<li><strong>Seed a real module</strong> — paste the History &amp; Heritage content (or rebuild it in the live builder once connected) so there's something to take on day one.</li>
+<li><strong>Make yourself National Staff</strong>, then invite one Campus Director and confirm they can edit but a test "member" account cannot.</li>
+<li><strong>Take the test as a member</strong> end-to-end and confirm an <code>attempts</code> row appears with the right score.</li>
+<li><strong>Turn on email confirmations</strong> in Auth settings before inviting real members.</li>
+<li><strong>Set a custom domain</strong> for auth emails (Auth → Email Templates) so links come from your chapter, not a generic Supabase address.</li>
+</ul>
+
+<hr class="rule" />
+<p style="font-size:13px;color:var(--faint);margin-top:24px;">Questions on any step — especially Step 4 (the permission rules) or Step 6 (wiring the app) — are the ones to bring back to me. I can adjust the prototype's data layer to match whatever you stand up.</p>
+
+</td></tr></tbody>
+<tfoot><tr><td class="ftr-space"></td></tr></tfoot>
+</table>
+</main>
+</body>
+</html>
