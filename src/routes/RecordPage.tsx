@@ -8,6 +8,7 @@ import { SubBar } from '@/components/layout/SubBar';
 import { useTheme } from '@/theme/useTheme';
 import { UI, SERIF } from '@/theme/tokens';
 import { Avatar, Tag, Field, OfficeChip } from '@/components/ui';
+import { ProfileDetail } from '@/features/profile';
 import { useMembers } from '@/data/members';
 import { currentOffices, pastOffices, fullName, recommend, type Member } from '@/types/domain';
 
@@ -24,13 +25,19 @@ export function RecordPage({ kind }: { kind: Kind }) {
 
   return (
     <AppShell>
-      <SubBar crumbs={[SECTION[kind], member ? fullName(member) : CRUMB[kind]]} />
-      {isLoading ? (
-        <Notice text="Loading…" />
-      ) : !member ? (
-        <Notice text="That record could not be found." />
+      {member && kind === 'profile' ? (
+        <ProfileDetail member={member} />
       ) : (
-        <Body member={member} kind={kind} />
+        <>
+          <SubBar crumbs={[SECTION[kind], member ? fullName(member) : CRUMB[kind]]} />
+          {isLoading ? (
+            <Notice text="Loading…" />
+          ) : !member ? (
+            <Notice text="That record could not be found." />
+          ) : (
+            <Body member={member} kind={kind} />
+          )}
+        </>
       )}
     </AppShell>
   );
@@ -40,6 +47,10 @@ export function RecordPage({ kind }: { kind: Kind }) {
   }
 }
 
+/**
+ * Application Review / Alumni record (interim) — identity header + key facts.
+ * The profile kind now renders the full ProfileDetail workspace above.
+ */
 function Body({ member, kind }: { member: Member; kind: Kind }) {
   const { t } = useTheme();
   const offices = currentOffices(member);

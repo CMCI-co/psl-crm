@@ -31,6 +31,8 @@ interface LifecycleValue {
   advance: (m: Movable, to: Stage) => void;
   promote: (m: Movable) => void;
   advanceMany: (ms: Movable[], to: Stage, verb?: string) => void;
+  /** Push a transient confirmation toast (shared by other live-collab stores). */
+  pushToast: (text: string) => void;
   overrides: Record<string, Stage>;
   toasts: Toast[];
   dismiss: (id: number) => void;
@@ -94,8 +96,8 @@ export function LifecycleProvider({ children }: { children: ReactNode }) {
   }, [persist, pushToast]);
 
   const value = useMemo<LifecycleValue>(() => ({
-    stageOf, advance, promote, advanceMany, overrides, toasts, dismiss,
-  }), [stageOf, advance, promote, advanceMany, overrides, toasts, dismiss]);
+    stageOf, advance, promote, advanceMany, pushToast, overrides, toasts, dismiss,
+  }), [stageOf, advance, promote, advanceMany, pushToast, overrides, toasts, dismiss]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

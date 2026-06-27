@@ -117,9 +117,11 @@ export const MOCK_MEMBERS: Member[] = [
   ...ALUMNI.map(fromAlum),
 ];
 
-/** The hero profile (kit.jsx PROFILE) — the record that travels Apply → Alumni. */
-export const HERO_PROFILE: Member = {
-  ...(MOCK_MEMBERS.find((m) => m.id === 'm-marcus-bellamy') as Member),
+// Enrich the hero record (Marcus Bellamy) with the full contact detail the
+// Profile Card renders, so demo profiles look complete. Lives on the canonical
+// member so the directory and the profile read the same data; mirrored by
+// supabase/seed.sql for the live source.
+const HERO_DETAIL: Partial<Member> = {
   middle: 'J.',
   phone: '(704) 555-0182',
   email: 'marcus.bellamy@gmail.com',
@@ -129,3 +131,8 @@ export const HERO_PROFILE: Member = {
   employer: 'Summer Intern · Duke Energy',
   relationship: 'Single',
 };
+const HERO_INDEX = MOCK_MEMBERS.findIndex((m) => m.id === 'm-marcus-bellamy');
+if (HERO_INDEX >= 0) MOCK_MEMBERS[HERO_INDEX] = { ...MOCK_MEMBERS[HERO_INDEX], ...HERO_DETAIL };
+
+/** The hero profile (kit.jsx PROFILE) — the record that travels Apply → Alumni. */
+export const HERO_PROFILE: Member = MOCK_MEMBERS[HERO_INDEX] ?? MOCK_MEMBERS[0];
