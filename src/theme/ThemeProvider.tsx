@@ -1,76 +1,66 @@
-// src/theme/ThemeProvider.tsx
-// Resolves the active theme from persisted brand + dark-mode choices and
-// exposes them (plus density) app-wide. Replaces the prototype's window.PSLTheme
-// and the tweaks-panel wiring with real React context + localStorage.
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { getTheme, type BrandKey, type Density, type Mode } from './tokens';
+import { ThemeContext } from './theme-context';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { BrandKey, Theme, getTheme } from './tokens';
+const LS_KEY = 'psl.theme.v1';
 
-export type Density = 'comfortable' | 'compact';
+interface Persisted { brand: BrandKey; mode: Mode; density: Density; }
 
-interface ThemeCtx {
-  theme: Theme;
-  brand: BrandKey;
-  dark: boolean;
-  density: Density;
-  setBrand: (b: BrandKey) => void;
-  setDark: (v: boolean) => void;
-  toggleDark: () => void;
-  setDensity: (d: Density) => void;
-}
-
-const Ctx = createContext<ThemeCtx | null>(null);
-
-const LS = {
-  brand: 'psl.brand',
-  dark: 'psl.dark',
-  density: 'psl.density',
-};
-
-function read<T>(key: string, fallback: T): T {
+function load(): Persisted {
+  const fallback: Persisted = { brand: 'navy', mode: 'light', density: 'comfortable' };
+  if (typeof window === 'undefined') return fallback;
   try {
-    const v = localStorage.getItem(key);
-    return v == null ? fallback : (JSON.parse(v) as T);
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (raw) return { ...fallback, ...(JSON.parse(raw) as Partial<Persisted>) };
   } catch {
-    return fallback;
+    /* ignore */
   }
+  // First visit: honor the OS dark-mode preference.
+  if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) fallback.mode = 'dark';
+  return fallback;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [brand, setBrandState] = useState<BrandKey>(() => read<BrandKey>(LS.brand, 'navy'));
-  const [dark, setDarkState] = useState<boolean>(() => read<boolean>(LS.dark, false));
-  const [density, setDensityState] = useState<Density>(() => read<Density>(LS.density, 'comfortable'));
+/** Push the resolved palette onto <html> as CSS variables for global styling. */
+function applyCssVars(brand: BrandKey, mode: Mode, density: Density) {
+  const t = getTheme(brand, mode);
+  const root = document.documentElement;
+  const set = (k: string, v: string) => root.style.setProperty(k, v);
+  set('--ink', t.ink); set('--sub', t.sub); set('--faint', t.faint);
+  set('--bg', t.bg); set('--panel', t.panel); set('--panel2', t.panel2); set('--line', t.line);
+  set('--chrome', t.chrome); set('--chrome-line', t.chromeLine);
+  set('--accent', t.accent); set('--accent-deep', t.accentDeep);
+  set('--accent-soft', t.accentSoft); set('--on-accent', t.onAccent);
+  set('--gold', t.gold);
+  root.dataset.brand = brand;
+  root.dataset.mode = mode;
+  root.dataset.density = density;
+  root.style.colorScheme = mode;
+}
 
-  const setBrand = useCallback((b: BrandKey) => {
-    setBrandState(b);
-    localStorage.setItem(LS.brand, JSON.stringify(b));
-  }, []);
-  const setDark = useCallback((v: boolean) => {
-    setDarkState(v);
-    localStorage.setItem(LS.dark, JSON.stringify(v));
-  }, []);
-  const toggleDark = useCallback(() => setDark(!dark), [dark, setDark]);
-  const setDensity = useCallback((d: Density) => {
-    setDensityState(d);
-    localStorage.setItem(LS.density, JSON.stringify(d));
-  }, []);
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [{ brand, mode, density }, setState] = useState<Persisted>(load);
 
-  const theme = useMemo(() => getTheme(brand, dark), [brand, dark]);
-
-  // Reflect the canvas color + scheme on the document for native form controls
-  // and to avoid white flashes between routes.
   useEffect(() => {
-    document.documentElement.style.background = theme.panel;
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-    document.body.style.background = theme.panel;
-  }, [theme, dark]);
+    applyCssVars(brand, mode, density);
+    try {
+      window.localStorage.setItem(LS_KEY, JSON.stringify({ brand, mode, density }));
+    } catch {
+      /* ignore */
+    }
+  }, [brand, mode, density]);
 
-  const value: ThemeCtx = { theme, brand, dark, density, setBrand, setDark, toggleDark, setDensity };
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
+  const setBrand = useCallback((b: BrandKey) => setState((s) => ({ ...s, brand: b })), []);
+  const setMode = useCallback((m: Mode) => setState((s) => ({ ...s, mode: m })), []);
+  const toggleMode = useCallback(
+    () => setState((s) => ({ ...s, mode: s.mode === 'dark' ? 'light' : 'dark' })),
+    [],
+  );
+  const setDensity = useCallback((d: Density) => setState((s) => ({ ...s, density: d })), []);
 
-export function useTheme(): ThemeCtx {
-  const v = useContext(Ctx);
-  if (!v) throw new Error('useTheme must be used within ThemeProvider');
-  return v;
+  const value = useMemo(
+    () => ({ t: getTheme(brand, mode), brand, mode, density, setBrand, setMode, toggleMode, setDensity }),
+    [brand, mode, density, setBrand, setMode, toggleMode, setDensity],
+  );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

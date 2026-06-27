@@ -1,8 +1,12 @@
 # Phi Sigma Lambda CRM
 
-A relationship-management app for a Christian college fraternity chapter. People move through a one-way lifecycle — **Applicant → Candidate → Active Member → Alumni** — and a single **Profile Card** travels with each person the whole way.
+Relationship-management for a Christian college fraternity — tracking people
+through the full lifecycle (**Applicant → Candidate → Active Member → Alumni**),
+the relationships around them, and the formation that forms them.
 
-This repository is a production React + Supabase application built from the design prototype. It **runs today on in-memory mock data** (no backend required) and flips to Supabase by changing one environment variable.
+Built with **Vite · React 18 · TypeScript · React Router · TanStack Query ·
+Supabase**. It is a production rebuild of the HTML/React prototype, ported 1:1
+to a typed component system with a real backend.
 
 ---
 
@@ -13,88 +17,85 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. It starts on the **Active Members** directory with the full seeded roster. No backend or keys are needed in mock mode.
+Open the printed URL. **No backend needed** — the app boots in *demo mode* on a
+bundled sample chapter (the same data the prototype used). A "Demo data" badge
+in the top bar shows when you're on demo vs. live data.
 
-Other scripts:
+To run against Supabase, see [`supabase/README.md`](./supabase/README.md):
 
 ```bash
-npm run build      # type-check + production build
-npm run typecheck  # tsc --noEmit
-npm run preview    # preview the production build
-npm run lint       # eslint
+cp .env.example .env   # then add your project URL + anon key
 ```
 
-Requirements: Node 18+ (Node 20 recommended).
+| Script            | What it does                              |
+| ----------------- | ----------------------------------------- |
+| `npm run dev`     | Start the dev server (Vite)               |
+| `npm run build`   | Type-check (`tsc --noEmit`) + production build |
+| `npm run preview` | Preview the production build              |
+| `npm run typecheck` | Type-check only                         |
 
 ---
 
-## What works right now (mock mode)
-
-- **Directory** with all four stage views — Applicants, Candidates, Active Members, Alumni — reachable from the sidebar and by URL.
-  - Active Members can be grouped **By class**, **By cohort**, or shown as a flat **Table**. Class/cohort groups get the tinted band with a count pill.
-  - Applicants show an interview score and an auto-derived **recommendation** (Advance / Discuss / Hold / Awaiting).
-  - Alumni show expanded fields (graduating class, work, location, open-to-connect).
-- **Lifecycle transitions**, all three ways:
-  1. **Single from a list** — the per-row action (e.g. *Promote to Member*).
-  2. **Single from a profile** — the stage-aware button in the profile sub-bar.
-  3. **Batch** — toggle **Select**, choose rows (with select-all + indeterminate), then act from the floating batch bar.
-- **Profile** built on the traveling **Profile Card**, plus the Interview Scorecard, Milestones timeline, and Prayer Requests cards. Responsive: two columns on desktop, a tab strip on mobile.
-- **Collaboration layer** — promotions, reassignments, and new follow-ups fan out **toasts, notifications, and an activity feed** (you never notify yourself). Switch the acting user from the top bar to see it.
-- **Theming** — Navy / Evergreen / Maroon brand palettes, light/dark, comfortable/compact density. Fully responsive down to phone widths (drawer nav, stacked cards).
-- **Roles** — National Staff, Campus Director (default), Member, Candidate. Management actions are gated by role.
-
-See [`BUILD_STATUS.md`](./BUILD_STATUS.md) for exactly what is built, what is scaffolded, and the next steps.
-
----
-
-## Architecture
+## How it's organized
 
 ```
 src/
-  theme/        design tokens (exact prototype values) + ThemeProvider
-  types/        the domain model (Stage, Member, Task, …) + lifecycle flow
-  data/         the swappable data layer  ← key design decision
-  store/        Zustand: collab (toasts/notifs/activity) + batch selection
-  auth/         role context + permission helpers (maps to Supabase RLS)
-  lib/          supabase client, office helpers, recommend()
-  components/   atoms, responsive (drawer), collab chrome, chrome (bars), cards
-  features/     directory/, profile/, and scaffolds for the rest
-supabase/       schema.sql, policies.sql, seed.sql
+  theme/        Design tokens (3 brands × light/dark) + ThemeProvider/useTheme
+  components/
+    ui/         Ported atoms (Avatar, Tag, OfficeChip, Button, …)
+    layout/     AppShell, TopBar, SubBar, nav controls
+  routes/       One component per URL (DirectoryPage, RecordPage, …)
+  features/
+    directory/  The directory: sidebar + the four lifecycle bodies
+  data/         Repositories + React Query hooks; mock dataset; row↔model mapping
+  types/        domain.ts (app model) + database.ts (Supabase types)
+  lib/          supabase client, viewport hook
+supabase/       schema.sql · policies.sql · seed.sql · setup guide
 ```
 
-### The swappable data source (the important bit)
+### Demo ↔ live, one code path
 
-Every screen talks to a single `DataSource` interface (`src/data/DataSource.ts`) through TanStack Query hooks (`src/data/queries.ts`). There are two implementations:
+Every screen reads through a repository (e.g. `useMembers()`). When Supabase env
+vars are present the repository queries the database; when they're absent it
+returns the mock dataset. Components never know which source they got, so the UI
+is identical either way and `seed.sql` mirrors `src/data/mock.ts` 1:1.
 
-- `mockDataSource` — in-memory, seeded from the prototype. Runs with no backend.
-- `supabaseDataSource` — the real Postgres-backed implementation.
+### Theming
 
-`src/data/index.ts` picks one based on `VITE_DATA_SOURCE`. **Nothing else in the app changes** when you switch — the UI, the collab store, and the lifecycle logic are identical in both modes. This is what lets the app run today and move to Supabase later without a rewrite.
-
----
-
-## Moving to Supabase
-
-1. Create a Supabase project.
-2. In the SQL editor, run, in order:
-   - `supabase/schema.sql`
-   - `supabase/policies.sql`
-   - `supabase/seed.sql`
-3. Copy `.env.example` to `.env.local` and fill in:
-   ```
-   VITE_DATA_SOURCE=supabase
-   VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-   VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY
-   ```
-4. Create your account through Supabase Auth, then link it to the seeded chapter so RLS lets you see the roster (see the commented `UPDATE` at the bottom of `seed.sql`).
-5. `npm run dev`.
-
-The seed mirrors the mock dataset, so the app looks the same before and after the cutover.
+`ThemeProvider` resolves a brand (Heritage Navy / Evergreen & Cream / Maroon &
+Stone) × mode (light/dark) × density (comfortable/compact) into a typed token
+object used in inline styles **and** mirrored as CSS variables on `<html>`.
+Choices persist to `localStorage` and the first visit honors the OS dark-mode
+preference. Switch brand/density from the appearance menu in the top bar.
 
 ---
 
-## Notes
+## What's built (Phases 1–2)
 
-- Styling follows the prototype faithfully (theme-driven inline styles). Brand palettes, dark mode, and density all come from `src/theme/tokens.ts`.
-- The prototype's `window.PSLNav` navigation is replaced by real React Router URLs.
-- This is an honest first pass: the Directory and Profile slices are built end-to-end; the Relationship Tracker, Resources, full Application Review, and Training are scaffolded with their specs. See `BUILD_STATUS.md`.
+- Project scaffold, theme system, and app shell with **real-URL routing**
+  (sidebar collapses to a drawer on narrow screens).
+- The signature **Active Members** directory — grouped by class year with the
+  tinted band, accent marker, and count pills from the prototype; comfortable
+  and compact densities; desktop grid + mobile card layouts.
+- Bespoke **Candidates / Applicants / Alumni** bodies (search + status filter):
+  the candidate "crossing-over" promote rail, the applicant decision-night
+  triage with interview scores and Advance / Discuss / Hold recommendations,
+  and the alumni roster with an open-to-connect signal and grad-year / major /
+  map view switch. All stat chips and banners are computed from live data.
+- **Lifecycle transitions** — advance or promote a person singly or in a batch.
+  The change is optimistic (they move between views instantly) and, when
+  Supabase is configured, persists a `stage_transitions` row + updates
+  `members.stage`; a toast confirms each action.
+- **Record pages** for profiles, applications, and alumni that read live from
+  the data source and show an identity header + key facts.
+- Full backend: **`schema.sql` + `policies.sql` (RLS) + `seed.sql`**, with the
+  data layer ready to switch from demo to live by adding env vars.
+
+## Roadmap
+
+- **Phase 3** — Profile workspace + Profile Card; Resources; Training (builder +
+  player + knowledge checks); Cohorts view.
+- **Phase 4** — Relationship Tracker with owners, follow-ups, life areas, and
+  real-time collaboration; notifications.
+
+Build order follows the prototype README's "Suggested build order."

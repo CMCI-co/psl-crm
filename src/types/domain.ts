@@ -1,12 +1,19 @@
-// src/types/domain.ts
-// Domain model — the typed shape of the data the app reads/writes.
-// Mirrors the proposed Supabase schema in the README (and /supabase/schema.sql)
-// while staying close to the prototype datasets so the mock adapter is a 1:1 seed.
+// domain.ts — the application's typed model. Field names follow the README's
+// proposed Supabase schema; the shapes match the prototype data in kit.jsx.
 
-import type { StageKey } from '@/theme/tokens';
+import type { Stage } from '@/theme/tokens';
+export type { Stage } from '@/theme/tokens';
 
-export type Stage = StageKey; // 'applicant' | 'candidate' | 'member' | 'alumni'
+export type UserRole =
+  | 'national_staff'
+  | 'campus_director'
+  | 'member'
+  | 'candidate'
+  | 'applicant'
+  | 'alumni';
+
 export type MemberStatus = 'active' | 'inactive';
+
 export type ClassYear =
   | 'Freshman'
   | 'Sophomore'
@@ -15,6 +22,7 @@ export type ClassYear =
   | 'Super Senior'
   | 'Alumni';
 
+/** Order class years for the grouped Active roster (Freshman → Super Senior). */
 export const CLASS_ORDER: ClassYear[] = [
   'Freshman',
   'Sophomore',
@@ -24,187 +32,145 @@ export const CLASS_ORDER: ClassYear[] = [
   'Alumni',
 ];
 
-/** Office/role held — current rides with the card; past become historic labels. */
-export interface OfficeRole {
-  id?: string;
+/** An office held — current offices ride with the card; past ones are historic. */
+export interface Office {
   title: string;
-  term: string; // e.g. "2025–26"
+  term: string | null;
   current: boolean;
 }
 
 /** The core person record — covers all four lifecycle stages. */
 export interface Member {
   id: string;
-  chapterId?: string;
-
+  chapterId: string | null;
   firstName: string;
   lastName: string;
-  middle?: string;
-
+  middle?: string | null;
   stage: Stage;
   status: MemberStatus;
 
-  // contact
-  email?: string;
-  phone?: string;
-  address?: string;
-  birthday?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  birthday?: string | null;
 
-  // academic
-  school?: string;
-  major?: string;
-  minor?: string;
-  classYear?: ClassYear;
+  school?: string | null;
+  major?: string | null;
+  minor?: string | null;
+  classYear: ClassYear;
 
-  // life
-  hometown?: string;
-  church?: string;
-  employer?: string;
-  relationship?: string;
+  hometown?: string | null;
+  church?: string | null;
+  employer?: string | null;
+  relationship?: string | null;
 
-  cohort?: string; // e.g. "Fall 2024"
-  memberNo?: string; // e.g. "PSL-0418"
-  gradYear?: string; // alumni
+  cohort?: string | null;
+  memberNo?: string | null;
+  gradYear?: string | null;
 
-  // alumni-only
-  work?: string;
-  location?: string;
-  marital?: string;
-  kids?: number;
-  openToConnect?: boolean;
+  // Alumni-specific
+  work?: string | null;
+  location?: string | null;
+  marital?: string | null;
+  kids?: number | null;
+  openToConnect?: boolean | null;
 
-  ownerId?: string; // relationship owner (a staff member name in mock)
-  avatarUrl?: string;
+  ownerId?: string | null;
+  ownerName?: string | null;
+  avatarUrl?: string | null;
 
-  roles?: OfficeRole[];
+  offices: Office[];
 
-  // applicant-only — interview score drives recommend()
+  // Applicant-specific
+  submitted?: string | null;
   interviewScore?: number | null;
-  submitted?: string;
-
-  // derived cadence (mock today; computed from interactions in production)
-  due?: 'overdue' | 'due' | 'ok';
-  next?: string;
-  cadence?: string;
-
-  createdAt?: string;
-  updatedAt?: string;
 }
 
-export type InteractionType = 'Call' | 'Text' | 'Email' | 'Visit';
-
-export interface Interaction {
-  id: string;
-  memberId: string; // subject
-  byId: string; // logger
-  type: InteractionType;
-  note?: string;
-  occurredAt: string;
-}
-
-export type TaskChannel = InteractionType;
-export type TaskPriority = 'high' | 'med' | 'low';
+export type Channel = 'Call' | 'Text' | 'Email' | 'Visit';
+export type Priority = 'high' | 'med' | 'low';
 export type TaskStatus = 'todo' | 'doing' | 'done';
 
 export interface Task {
   id: string;
-  memberId?: string; // about (mock keys on the person's display name)
-  who?: string; // denormalized subject name for the mock UI
-  ownerId: string; // assignee (name in mock)
+  memberId: string | null;
+  who: string;
+  title: string;
+  owner: string;
   createdBy?: string;
-  title: string;
-  channel: TaskChannel;
-  priority: TaskPriority;
-  due?: string;
+  channel: Channel;
+  priority: Priority;
+  due: string;
   status: TaskStatus;
-  bucket?: 'today' | 'week' | 'overdue';
-  createdAt?: string;
 }
 
-export type LifeArea = 'Personal' | 'Work' | 'Spiritual' | 'Family';
+export interface Interaction {
+  id: string;
+  memberId: string;
+  who: string;
+  by: string;
+  type: Channel;
+  note: string;
+  occurredAt: string;
+}
+
 export type LifeTone = 'thriving' | 'steady' | 'watch';
-
-export interface LifeAreaStatus {
+export interface LifeArea {
   id: string;
   memberId: string;
-  area: LifeArea;
+  area: string;
   tone: LifeTone;
-  note?: string;
-  updatedBy?: string;
-  updatedAt?: string;
+  note: string;
+  updatedBy: string;
+  updatedAt: string;
 }
 
-export interface PrayerRequest {
+export interface Notification {
   id: string;
-  memberId: string;
+  to: string;
   text: string;
-  status: 'open' | 'answered';
-  praise?: string;
-  date?: string;
-}
-
-export interface Milestone {
-  id: string;
-  memberId: string;
-  date: string;
-  title: string;
-  kind: 'app' | 'interview' | 'stage' | 'personal' | 'next';
-  done: boolean;
-}
-
-export interface NotificationItem {
-  id: string;
-  toId: string; // recipient name in mock
-  text: string;
-  sub?: string;
+  sub: string;
   read: boolean;
-  createdAt: string;
-}
-
-export interface ActivityItem {
-  id: string;
-  byId: string;
-  type?: InteractionType | string;
-  who?: string;
-  note?: string;
-  when: string;
+  ts: string;
 }
 
 export interface StageTransition {
   id: string;
   memberId: string;
-  fromStage: Stage;
+  fromStage: Stage | null;
   toStage: Stage;
-  byId: string;
+  byName: string;
   occurredAt: string;
 }
 
-export interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
+/** Full name convenience. */
+export function fullName(m: Pick<Member, 'firstName' | 'lastName'>): string {
+  return `${m.firstName} ${m.lastName}`.trim();
 }
 
-/** Lifecycle flow — the one-way journey. Mirrors collab.jsx STAGE_FLOW. */
-export const STAGE_LABEL: Record<Stage, string> = {
-  applicant: 'Applicant',
-  candidate: 'Candidate',
-  member: 'Active Member',
-  alumni: 'Alumni',
-};
-
-export interface StageStep {
-  next: Stage;
+/** Interview-score → decision recommendation (prototype recommend()). */
+export interface Recommendation {
   label: string;
-  verb: string;
+  kind: 'await' | 'advance' | 'discuss' | 'hold';
+  fg: string;
+  bg: string;
+}
+export function recommend(score: number | null | undefined): Recommendation {
+  if (score == null) return { label: 'Awaiting', kind: 'await', fg: '#8b91a0', bg: 'transparent' };
+  if (score >= 8.5) return { label: 'Advance', kind: 'advance', fg: '#1f6b46', bg: '#e3f3ea' };
+  if (score >= 6.5) return { label: 'Discuss', kind: 'discuss', fg: '#8a5a16', bg: '#fbefdd' };
+  return { label: 'Hold', kind: 'hold', fg: '#9a3b3b', bg: '#f6e9e9' };
 }
 
-export const STAGE_FLOW: Partial<Record<Stage, StageStep>> = {
+export const currentOffices = (m: Pick<Member, 'offices'>) => m.offices.filter((o) => o.current);
+export const pastOffices = (m: Pick<Member, 'offices'>) => m.offices.filter((o) => !o.current);
+export function topOffice(m: Pick<Member, 'offices'>): Office | null {
+  return currentOffices(m)[0] ?? pastOffices(m)[0] ?? null;
+}
+
+/** Lifecycle state machine — single source for advance/promote/move labels. */
+export const STAGE_FLOW: Record<Stage, { next: Stage; label: string; verb: string } | null> = {
   applicant: { next: 'candidate', label: 'Advance to Candidate', verb: 'advanced' },
   candidate: { next: 'member', label: 'Promote to Member', verb: 'promoted' },
   member: { next: 'alumni', label: 'Move to Alumni', verb: 'moved' },
+  alumni: null,
 };
-
-export function fullName(m: Pick<Member, 'firstName' | 'lastName'>): string {
-  return `${m.firstName} ${m.lastName}`;
-}

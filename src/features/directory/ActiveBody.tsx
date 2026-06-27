@@ -1,200 +1,171 @@
-// src/features/directory/ActiveBody.tsx
-// Active-member roster (ported/derived from directory.jsx ActiveBody). Grouped by
-// class year (default) or cohort, or flat (Table). Each group gets the standout
-// tinted band: groupBg fill + 3px accent marker + UPPERCASE groupInk label +
-// count pill. Rows reveal a checkbox column while selecting; compact density
-// drops the secondary chip line.
+// ActiveBody.tsx — the signature Active roster, grouped by class year
+// (Freshman → Super Senior). Faithful port of directory.jsx ActiveBody: tinted
+// group band with a 3px accent marker + uppercase label + count pill, then the
+// member rows. Desktop is a 7-column grid; below the tablet breakpoint it
+// becomes a stacked card list.
+import type { CSSProperties } from 'react';
+import { useTheme } from '@/theme/useTheme';
+import { UI, SERIF, BP } from '@/theme/tokens';
+import { useViewport } from '@/lib/useViewport';
+import { Avatar, Tag, Dot, OfficeChip } from '@/components/ui';
+import { CLASS_ORDER, currentOffices, fullName, type ClassYear, type Member } from '@/types/domain';
+import type { DirStats } from './DirectoryView';
 
-import { useNavigate } from 'react-router-dom';
-import type { Theme } from '@/theme/tokens';
-import { UI } from '@/theme/tokens';
-import type { Member } from '@/types/domain';
-import { CLASS_ORDER, fullName } from '@/types/domain';
-import { Avatar } from '@/components/atoms/Avatar';
-import { Tag, Dot } from '@/components/atoms/Tag';
-import { OfficeChip } from '@/components/atoms/OfficeChip';
-import { SelChk } from '@/components/collab/Batch';
-import { topRole } from '@/lib/offices';
+const COLS = '2.1fr 1fr 1.5fr 1.3fr 1.5fr 1fr 0.8fr';
+const HEADERS = ['Member', 'Class', 'Major', 'Hometown', 'Home Church', 'Cohort', 'Status'];
 
-export type GroupBy = 'class' | 'cohort' | 'none';
-
-interface Props {
-  theme: Theme;
-  members: Member[];
-  density: 'comfortable' | 'compact';
-  groupBy: GroupBy;
-  selecting: boolean;
-  sel: Set<string>;
-  toggle: (id: string) => void;
-  setAll: (ids: string[], on: boolean) => void;
+function pluralClass(y: ClassYear): string {
+  return y === 'Super Senior' ? 'Super Seniors' : `${y}s`;
 }
 
-const COLS = '1.7fr 0.8fr 1.1fr 1fr 1fr 0.9fr 0.7fr';
+function GroupBand({ label, count }: { label: string; count: number }) {
+  const { t } = useTheme();
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 26px', background: t.groupBg, borderTop: `1px solid ${t.chromeLine || t.line}`, borderBottom: `1px solid ${t.chromeLine || t.line}` }}>
+      <span style={{ width: 3, height: 13, borderRadius: 2, background: t.groupInk, flexShrink: 0 }} />
+      <span style={{ fontFamily: UI, fontSize: 11.5, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: t.groupInk }}>{label}</span>
+      <span style={{ fontFamily: UI, fontSize: 11, fontWeight: 600, color: t.groupInk, background: t.bg, borderRadius: 999, padding: '1px 8px' }}>{count}</span>
+    </div>
+  );
+}
 
-export function ActiveBody({ theme: t, members, density, groupBy, selecting, sel, toggle, setAll }: Props) {
-  const navigate = useNavigate();
-  const compact = density === 'compact';
-  const rowPad = compact ? '8px 14px' : '12px 14px';
+function Stat({ value, label, tone }: { value: number; label: string; tone: string }) {
+  const { t } = useTheme();
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, padding: '7px 13px', borderRadius: 10, background: t.bg, border: `1px solid ${t.line}` }}>
+      <span style={{ fontFamily: UI, fontSize: 17, fontWeight: 700, color: tone, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      <span style={{ fontFamily: UI, fontSize: 10.5, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase', color: t.faint }}>{label}</span>
+    </div>
+  );
+}
 
-  const allIds = members.map((m) => m.id);
-  const allOn = allIds.length > 0 && allIds.every((id) => sel.has(id));
-  const someOn = allIds.some((id) => sel.has(id));
+function useGroups(rows: Member[]) {
+  return CLASS_ORDER
+    .filter((y) => y !== 'Alumni')
+    .map((y) => ({ y, rows: rows.filter((r) => r.classYear === y) }))
+    .filter((g) => g.rows.length > 0);
+}
 
-  // Build groups
-  const groups: { key: string; label: string; items: Member[] }[] = [];
-  if (groupBy === 'none') {
-    groups.push({ key: 'all', label: `All members`, items: members });
-  } else if (groupBy === 'cohort') {
-    const byCohort = new Map<string, Member[]>();
-    members.forEach((m) => {
-      const k = m.cohort || 'No cohort';
-      if (!byCohort.has(k)) byCohort.set(k, []);
-      byCohort.get(k)!.push(m);
-    });
-    [...byCohort.keys()].sort().forEach((k) => groups.push({ key: k, label: k, items: byCohort.get(k)! }));
-  } else {
-    CLASS_ORDER.forEach((cls) => {
-      const items = members.filter((m) => m.classYear === cls);
-      if (items.length) groups.push({ key: cls, label: cls, items });
-    });
-    // any members without a recognized class year
-    const rest = members.filter((m) => !m.classYear || !CLASS_ORDER.includes(m.classYear));
-    if (rest.length) groups.push({ key: 'other', label: 'Other', items: rest });
+export function ActiveBody({ rows, stats, dense, onOpen }: {
+  rows: Member[]; stats: DirStats; dense: boolean; onOpen: (m: Member) => void;
+}) {
+  const { t } = useTheme();
+  const w = useViewport();
+  const narrow = w < BP.tab;
+  const groups = useGroups(rows);
+
+  const statRow = (
+    <>
+      <Stat value={stats.member} label="Active Members" tone={t.accent} />
+      <Stat value={stats.candidate} label="Candidates" tone={t.stages.candidate.fg} />
+      <Stat value={stats.inactive} label="Inactive" tone={t.faint} />
+      <Stat value={stats.alumni} label="Alumni" tone={t.stages.alumni.fg} />
+    </>
+  );
+
+  if (narrow) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: t.bg }}>
+        <div style={{ padding: '15px 16px 13px', borderBottom: `1px solid ${t.line}` }}>
+          <div style={{ fontFamily: SERIF, fontSize: 21, color: t.ink }}>UNC Charlotte</div>
+          <div style={{ fontFamily: UI, fontSize: 12.5, color: t.faint, marginTop: 2 }}>Active roster · Spring 2026</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>{statRow}</div>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {groups.map((g) => (
+            <div key={g.y}>
+              <GroupBand label={pluralClass(g.y)} count={g.rows.length} />
+              {g.rows.map((r) => {
+                const office = currentOffices(r)[0] ?? null;
+                return (
+                  <div key={r.id} onClick={() => onOpen(r)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${t.panel2}`, cursor: 'pointer' }}>
+                    <Avatar first={r.firstName} last={r.lastName} size={42} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <span style={{ fontFamily: UI, fontSize: 14.5, fontWeight: 600, color: t.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(r)}</span>
+                        <Dot active={r.status === 'active'} />
+                      </div>
+                      <div style={{ fontFamily: UI, fontSize: 12.5, color: t.sub, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.classYear} · {r.major}</div>
+                      <div style={{ fontFamily: UI, fontSize: 12, color: t.faint, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.hometown} · {r.cohort}</div>
+                      {office && <div style={{ marginTop: 6 }}><OfficeChip office={office} size="sm" /></div>}
+                    </div>
+                    <Chevron color={t.faint} />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+          {groups.length === 0 && <Empty label="No active members match your search." />}
+        </div>
+      </div>
+    );
   }
 
-  const gridCols = selecting ? `34px ${COLS}` : COLS;
-
-  const HeaderCell = ({ children, right }: { children: React.ReactNode; right?: boolean }) => (
-    <div
-      style={{
-        fontSize: 10.5,
-        fontWeight: 700,
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        color: t.faint,
-        textAlign: right ? 'right' : 'left',
-      }}
-    >
-      {children}
-    </div>
-  );
-
+  const rowPad: CSSProperties['padding'] = dense ? '6px 26px' : '10px 26px';
   return (
-    <div style={{ background: t.bg, border: `1px solid ${t.line}`, borderRadius: 14, overflow: 'hidden' }}>
-      {/* column header */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: gridCols,
-          gap: 12,
-          alignItems: 'center',
-          padding: '11px 14px',
-          borderBottom: `1px solid ${t.line}`,
-          background: t.panel,
-        }}
-      >
-        {selecting && <SelChk theme={t} checked={allOn} indeterminate={someOn && !allOn} onChange={() => setAll(allIds, !allOn)} />}
-        <HeaderCell>Member</HeaderCell>
-        <HeaderCell>Class</HeaderCell>
-        <HeaderCell>Major</HeaderCell>
-        <HeaderCell>Hometown</HeaderCell>
-        <HeaderCell>Home Church</HeaderCell>
-        <HeaderCell>Cohort</HeaderCell>
-        <HeaderCell right>Status</HeaderCell>
-      </div>
-
-      {groups.map((g) => (
-        <div key={g.key}>
-          {/* group band */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '8px 14px 8px 11px',
-              background: t.groupBg,
-              borderBottom: `1px solid ${t.line}`,
-              boxShadow: `inset 3px 0 0 ${t.accent}`,
-            }}
-          >
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: t.groupInk }}>{g.label}</span>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: t.groupInk,
-                background: t.bg,
-                borderRadius: 999,
-                padding: '1px 8px',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {g.items.length}
-            </span>
-          </div>
-
-          {g.items.map((m) => {
-            const role = topRole(m);
-            const on = sel.has(m.id);
-            return (
-              <div
-                key={m.id}
-                onClick={() => (selecting ? toggle(m.id) : navigate(`/profile/${m.id}`))}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: gridCols,
-                  gap: 12,
-                  alignItems: 'center',
-                  padding: rowPad,
-                  borderBottom: `1px solid ${t.line}`,
-                  cursor: 'pointer',
-                  background: on ? t.accentSoft : t.bg,
-                }}
-                onMouseEnter={(e) => {
-                  if (!on) (e.currentTarget as HTMLDivElement).style.background = t.panel;
-                }}
-                onMouseLeave={(e) => {
-                  if (!on) (e.currentTarget as HTMLDivElement).style.background = t.bg;
-                }}
-              >
-                {selecting && <SelChk theme={t} checked={on} onChange={() => toggle(m.id)} />}
-                {/* Member */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
-                  <Avatar f={m.firstName} l={m.lastName} size={compact ? 30 : 38} theme={t} src={m.avatarUrl} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: t.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {fullName(m)}
-                    </div>
-                    {!compact && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4 }}>
-                        <Tag stage={m.stage} size="sm" theme={t} />
-                        {role && <OfficeChip role={role} theme={t} size="sm" />}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <Cell t={t}>{m.classYear}</Cell>
-                <Cell t={t}>{m.major}</Cell>
-                <Cell t={t}>{m.hometown}</Cell>
-                <Cell t={t}>{m.church}</Cell>
-                <Cell t={t}>{m.cohort}</Cell>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: 'flex-end' }}>
-                  <Dot active={m.status === 'active'} />
-                  <span style={{ fontSize: 12, color: t.sub }}>{m.status === 'active' ? 'Active' : 'Inactive'}</span>
-                </div>
-              </div>
-            );
-          })}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ padding: '18px 26px 14px', background: t.bg, borderBottom: `1px solid ${t.line}` }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span style={{ fontFamily: SERIF, fontSize: 25, color: t.ink }}>UNC Charlotte</span>
+          <span style={{ fontFamily: UI, fontSize: 13, color: t.faint }}>· Spring 2026</span>
         </div>
-      ))}
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>{statRow}</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', background: t.bg }}>
+        <div style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: '11px 26px', borderBottom: `1px solid ${t.line}`, alignItems: 'center' }}>
+          {HEADERS.map((h) => (
+            <span key={h} style={{ fontFamily: UI, fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: t.faint }}>{h}</span>
+          ))}
+        </div>
+        {groups.map((g) => (
+          <div key={g.y}>
+            <GroupBand label={pluralClass(g.y)} count={g.rows.length} />
+            {g.rows.map((r) => {
+              const office = currentOffices(r)[0] ?? null;
+              return (
+                <div key={r.id} onClick={() => onOpen(r)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 12, padding: rowPad, alignItems: 'center', borderBottom: `1px solid ${t.panel2}`, cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+                    <Avatar first={r.firstName} last={r.lastName} size={dense ? 28 : 32} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontFamily: UI, fontSize: 13.5, fontWeight: 600, color: t.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(r)}</div>
+                      {!dense && (
+                        <div style={{ marginTop: 3, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <Tag stage={r.stage} size="sm" />
+                          {office && <OfficeChip office={office} size="sm" />}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Cell>{r.classYear}</Cell>
+                  <Cell ellipsis>{r.major}</Cell>
+                  <Cell ellipsis>{r.hometown}</Cell>
+                  <Cell ellipsis>{r.church}</Cell>
+                  <Cell>{r.cohort}</Cell>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Dot active={r.status === 'active'} />
+                    <span style={{ fontFamily: UI, fontSize: 12, color: t.sub, textTransform: 'capitalize' }}>{r.status}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+        {groups.length === 0 && <Empty label="No active members match your search." />}
+      </div>
     </div>
   );
 }
 
-function Cell({ t, children }: { t: Theme; children: React.ReactNode }) {
+function Cell({ children, ellipsis }: { children: React.ReactNode; ellipsis?: boolean }) {
+  const { t } = useTheme();
   return (
-    <div style={{ fontFamily: UI, fontSize: 13, color: t.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-      {children ?? '—'}
-    </div>
+    <span style={{ fontFamily: UI, fontSize: 13, color: t.sub, ...(ellipsis ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}>{children}</span>
   );
+}
+function Chevron({ color }: { color: string }) {
+  return <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke={color} strokeWidth="1.6" style={{ flexShrink: 0 }}><path d="M5 2.5L9.5 7 5 11.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+function Empty({ label }: { label: string }) {
+  const { t } = useTheme();
+  return <div style={{ padding: '44px 26px', textAlign: 'center', fontFamily: UI, fontSize: 13, color: t.faint }}>{label}</div>;
 }
